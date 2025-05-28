@@ -1,16 +1,36 @@
-import cloudinary from "./cloudinary.config.js";
-const uploadPDF = async (base64, id) => {
+import fs from "fs";
+import path from "path";
+import cloudinary from "./cloudinary.js";
+
+export const uploadPdf = async (base64Data, fullName) => {
   try {
-    const result = await cloudinary.uploader.upload(base64, {
+    if (!base64Data || !fullName) {
+      throw new Error("Missing base64 data or user name");
+    }
+
+    const resumeBuffer = Buffer.from(base64Data, "base64");
+    const safeName = fullName.replace(/\s+/g, "_").toLowerCase();
+    const tempDir = path.resolve("./temp");
+    const tempFilePath = path.join(tempDir, `${safeName}-resume.pdf`);
+
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir);
+    }
+
+    fs.writeFileSync(tempFilePath, resumeBuffer);
+
+    const cloudinaryResponse = await cloudinary.uploader.upload(tempFilePath, {
       resource_type: "raw",
-      folder: "resumes",
-      public_id: `${id}.pdf` ,
-      overwrite: true, 
+      folder: "pdf",
+      public_id: `${safeName}_resume`,
+      
     });
-    return result.secure_url;
+
+    fs.unlinkSync(tempFilePath);
+
+    return cloudinaryResponse.secure_url;
   } catch (error) {
-    console.error("PDF Upload Error:", error.message);
+    console.error("Error saving PDF with username:", error);
+    throw error;
   }
 };
-
-export default uploadPDF;

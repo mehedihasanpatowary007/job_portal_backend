@@ -2,7 +2,7 @@ import { User } from "../model/user.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { uploadImage } from "../utilis/uploadImage.js";
-import uploadPDF from "../utilis/uploadPdf.js";
+import { uploadPdf } from "../utilis/uploadPdf.js";
 
 export const register = async (req, res) => {
   try {
@@ -127,7 +127,7 @@ export const logout = async (req, res) => {
 
 export const profileUpdate = async (req, res) => {
   try {
-    const { fullName, email, phoneNumber, bio, skills, resume, profilePhoto } =
+    const { fullName, email, phoneNumber, bio, skills, profilePhoto, resume } =
       req.body;
 
     let skillArr;
@@ -149,20 +149,19 @@ export const profileUpdate = async (req, res) => {
     if (phoneNumber) user.phoneNumber = phoneNumber;
     if (email) user.email = email;
     if (bio) user.profile.bio = bio;
+    if (skills) user.profile.skills = skillArr;
     if (profilePhoto) {
-      const resImage = await uploadImage(profilePhoto);
-      user.profile.profilePhoto = resImage;
+      const uploadImageResponse = await uploadImage(profilePhoto);
+      user.profile.profilePhoto = uploadImageResponse;
     }
     if (resume) {
-      try {
-        const resPdf = await uploadPDF(resume, user._id);
-        console.log(resPdf);
-        user.profile.resume = resPdf;
-      } catch (error) {
-        console.log(error.message);
-      }
+      const uploadPdfResponse = await uploadPdf(resume, user.fullName);
+      const url = uploadPdfResponse.replace(
+        "/upload/",
+        "/upload/fl_attachment/"
+      );
+      user.profile.resume = url
     }
-    if (skills) user.profile.skills = skillArr;
 
     await user.save();
 
